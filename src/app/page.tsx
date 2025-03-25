@@ -1,30 +1,17 @@
-import handleClick from "@/components/handleClick";
+import Tables from "@/components/viewTables";
 
+async function fetchTables() {
+  const res = await fetch("http://localhost:4000/get-stats", { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch table data");
+  return res.json(); // Expecting { teams: [...], matches: [...] }
+}
 
-export default function Home() {
-
+export default async function Page() {
+  const data = await fetchTables(); // This is already a table map
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-        <main className="flex flex-col gap-8 row-start-2 items-center justify-center">
-            <a
-                className="flex items-center justify-center gap-2  hover:underline-offset-4 font-mono"
-                target="_blank"
-            >
-                Hello, world!
-            </a>
-            <a
-                    className="flex items-center gap-2 hover:underline hover:underline-offset-4 font-mono"
-                    //href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygUIUmljayByb2w%3D"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={handleClick}
-            >
-                    Click me!
-            </a>
-        </main>
-        <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-
-        </footer>
+    <div className="min-h-screen p-8 text-white bg-black">
+      <h1 className="text-3xl font-bold mb-6">Tables</h1>
+      <Tables data={data} />
     </div>
-);
+  );
 }
