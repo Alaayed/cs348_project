@@ -23,6 +23,20 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 	}
 	return
 }
+func InsertMatch(w http.ResponseWriter, r *http.Request) {
+	log.Println("IN API CALL")
+	var newMatch query.NewMatch
+	err := json.NewDecoder(r.Body).Decode(&newMatch)
+	if err != nil {
+		log.Println("InsertMatch: Error decoding body")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	newMatch.InsertMatch()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	return
+}
 func TestHandler(w http.ResponseWriter, r *http.Request) {
 	var request map[string]interface{}
 	err := json.NewDecoder(r.Body).Decode(&request)

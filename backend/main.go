@@ -20,8 +20,9 @@ func setupRouter() (*mux.Router, *cors.Cors) {
 	fmt.Println("Hello World")
 	router.HandleFunc("/test", API_CALL.TestHandler).Methods("POST")
 	router.HandleFunc("/get-stats", API_CALL.GetTables).Methods("Get")
+	router.HandleFunc("/insert-match", API_CALL.InsertMatch).Methods("POST")
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:2999"},
+		AllowedOrigins:   []string{"http://localhost:*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
