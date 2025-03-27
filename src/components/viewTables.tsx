@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import {useState} from "react"
 import {ChevronDown, Database, Table} from "lucide-react"
 import {cn} from "@/lib/utils"
@@ -9,7 +11,11 @@ type TableDataMap = Record<string, Record<string, any>[]>
 export default function Tables({data}: { data: TableDataMap }) {
     const tableNames = Object.keys(data)
     const [activeTab, setActiveTab] = useState(tableNames[0])
+    const [selectedRow, setSelectedRow] = useState<Record<string, any> | null>(null)
 
+    const handleRowClick = async (row: Record<string, any>) => {
+
+    }
     if (tableNames.length === 0)
         return (
             <div className="flex items-center justify-center h-64 rounded-lg bg-card text-card-foreground">
@@ -49,20 +55,29 @@ export default function Tables({data}: { data: TableDataMap }) {
 
             {/* Active Table */}
             <div className="w-full bg-card rounded-lg shadow-sm">
-                <GenericTable title={activeTab} data={data[activeTab]}/>
+                <GenericTable title={activeTab} data={data[activeTab]} onRowClick={handleRowClick}/>
             </div>
             <div>
-                <InsertMatch onInsert={(newMatch) => {
-                    data["matches"] = [...data["matches"], newMatch]
-                    setActiveTab("matches") // Ensure matches is shown
-                }}/>
-
+                <InsertMatch
+                    onInsert={(newMatch) => {
+                        data["matches"] = [...data["matches"], newMatch]
+                        setActiveTab("matches") // Ensure matches is shown
+                    }}
+                />
             </div>
         </div>
     )
 }
 
-function GenericTable({title, data}: { title: string; data: Record<string, any>[] }) {
+function GenericTable({
+                          title,
+                          data,
+                          onRowClick,
+                      }: {
+    title: string
+    data: Record<string, any>[]
+    onRowClick?: (row: Record<string, any>) => void
+}) {
     if (!data || data.length === 0)
         return <div className="flex items-center justify-center h-40 text-muted-foreground">No {title} found</div>
 
@@ -73,13 +88,26 @@ function GenericTable({title, data}: { title: string; data: Record<string, any>[
         if (typeof value === "boolean") return value ? "Yes" : "No"
         return String(value)
     }
+    const handleRowDelete = async (row: Record<string, any>) => {
+        console.log(row)
+        const id = row.match_id
+        console.log(id)
+        const res = await fetch(`http://localhost:4000/delete-match/${id}`, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+            }
+        })
+        if (!res.ok) {
+            throw new Error("Failed to delete row")
+        }
+    }
 
     return (
         <div className="overflow-x-auto rounded-lg bg-black">
             <table className="w-full text-sm border-collapse bg-black">
                 <thead>
                 <tr className="bg-neutral-800 text-black">
-
                     {headers.map((header) => (
                         <th key={header} className="px-6 py-3 text-left font-medium border-b border-border">
                             <div className="flex items-center gap-1 capitalize">
@@ -88,6 +116,9 @@ function GenericTable({title, data}: { title: string; data: Record<string, any>[
                             </div>
                         </th>
                     ))}
+                    <th className="px-6 py-3 text-left font-medium border-b border-border">
+                        <div className="flex items-center gap-1">Actions</div>
+                    </th>
                 </tr>
                 </thead>
                 <tbody>
@@ -102,20 +133,38 @@ function GenericTable({title, data}: { title: string; data: Record<string, any>[
                     >
                         {headers.map((header) => {
                             const value = formatCell(row[header])
-
                             return (
                                 <td key={header} className="px-6 py-4 border-b border-border">
-                      <span
-                          className={cn(
-                              header.toLowerCase().includes("id") && "font-mono text-xs",
-                              header.toLowerCase().includes("price") && "font-medium",
-                          )}
-                      >
-                        {value}
-                      </span>
+                    <span
+                        className={cn(
+                            header.toLowerCase().includes("id") && "font-mono text-xs",
+                            header.toLowerCase().includes("price") && "font-medium",
+                        )}
+                    >
+                      {value}
+                    </span>
                                 </td>
                             )
                         })}
+                        <td className="px-6 py-4 border-b border-border">
+                            <div className="flex gap-2">
+                                <button
+                                    className="px-3 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        onRowClick?.(row)
+                                    }}
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    className="px-3 py-1 text-xs bg-red-700 text-white rounded hover:bg-red-900"
+                                    onClick={() => handleRowDelete(row)}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
                     </tr>
                 ))}
                 </tbody>
@@ -150,17 +199,17 @@ function InsertMatch({onInsert}: { onInsert: (match: Record<string, any>) => voi
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(newMatch),
-            });
+            })
 
             if (!response.ok) {
-                const error = await response.text();
-                console.error("Failed to insert match:", error);
+                const error = await response.text()
+                console.error("Failed to insert match:", error)
             } else {
-                const result = await response.json();
-                console.log("Match inserted:", result);
+                const result = await response.json()
+                console.log("Match inserted:", result)
             }
         } catch (err) {
-            console.error("Error calling insert-match API:", err);
+            console.error("Error calling insert-match API:", err)
         }
 
         // Reset form

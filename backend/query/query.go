@@ -174,3 +174,10 @@ func addTeamByName(name string) {
 		log.Println("Failed to insert team:", err)
 	}
 }
+func DeleteMatchID(id string) {
+	db := dbconn.DB
+	_, err := db.Exec(`DELETE FROM Matches WHERE match_id = ?`, id)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
