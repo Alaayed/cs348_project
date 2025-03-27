@@ -72,3 +72,31 @@ func DeleteMatch(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	return
 }
+
+func UpdateMatch(w http.ResponseWriter, r *http.Request) {
+	var match query.NewMatchWithID
+	err := json.NewDecoder(r.Body).Decode(&match)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	mapping := query.MapNameToId(query.GetTeams())
+	removed_names := query.Match{
+		MatchId:    match.MatchId,
+		Date:       match.Date,
+		HomeScore:  match.HomeScore,
+		AwayScore:  match.AwayScore,
+		HomeTeamId: mapping[match.HomeTeamName],
+		AwayTeamId: mapping[match.AwayTeamName],
+	}
+	_, err = removed_names.UpdateMatch()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	return
+}

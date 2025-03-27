@@ -29,7 +29,14 @@ type NewMatch struct {
 	HomeScore    int    `json:"home_score"`
 	AwayScore    int    `json:"away_score"`
 }
-
+type NewMatchWithID struct {
+	MatchId      int    `json:"match_id"`
+	Date         string `json:"match_date"`
+	HomeTeamName string `json:"home_team_name"`
+	AwayTeamName string `json:"away_team_name"`
+	HomeScore    int    `json:"home_score"`
+	AwayScore    int    `json:"away_score"`
+}
 type Match struct {
 	MatchId    int    `json:"match_id"`
 	Date       string `json:"match_date"`
@@ -48,10 +55,6 @@ func GetAll() ([]Team, []MatchWithName) {
 		var match = &matches[i]
 		match.HomeTeamName = idMap[match.HomeTeamId]
 		match.AwayTeamName = idMap[match.AwayTeamId]
-		log.Printf("Match id: %d, Home name: %s , Away Name %s",
-			match.HomeTeamId,
-			match.HomeTeamName,
-			match.AwayTeamName)
 	}
 	return teams, matches
 }
@@ -76,9 +79,6 @@ func GetTeams() []Team {
 			log.Fatal(err)
 		}
 		teams = append(teams, team)
-	}
-	for _, team := range teams {
-		log.Printf("Team_id: %d", team.TeamId)
 	}
 
 	return teams
@@ -180,4 +180,18 @@ func DeleteMatchID(id string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func (n Match) UpdateMatch() (sql.Result, error) {
+	db := dbconn.DB
+	return db.Exec(`UPDATE Matches 
+					SET match_date = ?, home_team_id = ?, away_team_id = ?, home_score = ?, away_score = ?
+					WHERE match_id = ?`,
+		n.Date,
+		n.HomeTeamId,
+		n.AwayTeamId,
+		n.HomeScore,
+		n.AwayScore,
+		n.MatchId,
+	)
 }

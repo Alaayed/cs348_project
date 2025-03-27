@@ -22,6 +22,7 @@ func setupRouter() (*mux.Router, *cors.Cors) {
 	router.HandleFunc("/get-stats", API_CALL.GetTables).Methods("Get")
 	router.HandleFunc("/insert-match", API_CALL.InsertMatch).Methods("POST")
 	router.HandleFunc("/delete-match/{id}", API_CALL.DeleteMatch).Methods("DELETE")
+	router.HandleFunc("/update-match", API_CALL.UpdateMatch).Methods("PUT")
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
