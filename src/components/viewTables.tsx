@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { ChevronDown, Database, Table, X } from "lucide-react"
+import { useState, useMemo } from "react"
+import { ChevronDown, ChevronUp, Database, Table, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type TableDataMap = Record<string, Record<string, any>[]>
@@ -34,7 +34,7 @@ export default function Tables({ data }: { data: TableDataMap }) {
     console.log(formValues)
 
     const updatedMatch = {
-        match_id: formValues.match_id,
+      match_id: formValues.match_id,
       match_date: formValues.match_date,
       home_team_name: formValues.home_team_name,
       away_team_name: formValues.away_team_name,
@@ -220,16 +220,20 @@ function GenericTable({
   data: Record<string, any>[]
   onRowClick?: (row: Record<string, any>, action?: string) => void
 }) {
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "ascending" | "descending" } | null>(null)
+
   if (!data || data.length === 0)
     return <div className="flex items-center justify-center h-40 text-muted-foreground">No {title} found</div>
 
   const headers = Object.keys(data[0]).filter((header) => !header.toLowerCase().includes("id"))
+
   // Function to format cell content based on value type
   const formatCell = (value: never) => {
     if (value === null || value === undefined) return "-"
     if (typeof value === "boolean") return value ? "Yes" : "No"
     return String(value)
   }
+
   const handleRowDelete = async (row: Record<string, any>) => {
     console.log(row)
     const id = row.match_id
@@ -245,16 +249,75 @@ function GenericTable({
     }
   }
 
+  // Sort function
+  const requestSort = (key: string) => {
+    let direction: "ascending" | "descending" = "ascending"
+
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending"
+    }
+
+    setSortConfig({ key, direction })
+  }
+
+  // Apply sorting to data
+  const sortedData = useMemo(() => {
+    const sortableData = [...data]
+    if (sortConfig !== null) {
+      sortableData.sort((a, b) => {
+        // Handle different data types
+        let aValue = a[sortConfig.key]
+        let bValue = b[sortConfig.key]
+
+        // Handle dates
+        if (sortConfig.key.toLowerCase().includes("date")) {
+          aValue = new Date(aValue).getTime()
+          bValue = new Date(bValue).getTime()
+        }
+        // Handle numbers
+        else if (typeof aValue === "number" && typeof bValue === "number") {
+          // No conversion needed
+        }
+        // Handle strings (case-insensitive)
+        else {
+          aValue = String(aValue).toLowerCase()
+          bValue = String(bValue).toLowerCase()
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === "ascending" ? -1 : 1
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === "ascending" ? 1 : -1
+        }
+        return 0
+      })
+    }
+    return sortableData
+  }, [data, sortConfig])
+
   return (
     <div className="overflow-x-auto rounded-lg bg-black">
       <table className="w-full text-sm border-collapse bg-black">
         <thead>
           <tr className="bg-neutral-800 text-black">
             {headers.map((header) => (
-              <th key={header} className="px-6 py-3 text-left font-medium border-b border-border">
+              <th
+                key={header}
+                className="px-6 py-3 text-left font-medium border-b border-border cursor-pointer hover:bg-neutral-700"
+                onClick={() => requestSort(header)}
+              >
                 <div className="flex items-center gap-1 capitalize">
                   {header.replace(/_/g, " ")}
-                  <ChevronDown className="h-3 w-3 text-muted-foreground/50" />
+                  {sortConfig?.key === header ? (
+                    sortConfig.direction === "ascending" ? (
+                      <ChevronUp className="h-3 w-3 text-primary" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3 text-primary" />
+                    )
+                  ) : (
+                    <ChevronDown className="h-3 w-3 text-muted-foreground/50" />
+                  )}
                 </div>
               </th>
             ))}
@@ -264,7 +327,7 @@ function GenericTable({
           </tr>
         </thead>
         <tbody>
-          {data.map((row, rowIndex) => (
+          {sortedData.map((row, rowIndex) => (
             <tr
               key={rowIndex}
               className={cn(
