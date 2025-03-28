@@ -3,8 +3,9 @@
 import type React from "react"
 
 import { useState, useMemo } from "react"
-import { ChevronDown, ChevronUp, Database, Table, X } from "lucide-react"
+import { ChevronDown, ChevronUp, Database, Table, X, BarChart } from "lucide-react"
 import { cn } from "@/lib/utils"
+import ReportInterface from "./report-interface"
 
 type TableDataMap = Record<string, Record<string, any>[]>
 
@@ -14,6 +15,8 @@ export default function Tables({ data }: { data: TableDataMap }) {
   const [selectedRow, setSelectedRow] = useState<Record<string, any> | null>(null)
   const [editingRow, setEditingRow] = useState<Record<string, any> | null>(null)
   const [formValues, setFormValues] = useState<Record<string, any>>({})
+  const [viewMode, setViewMode] = useState<"tables" | "reports">("tables")
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "ascending" | "descending" } | null>(null)
 
   const handleRowClick = async (row: Record<string, any>, action?: string) => {
     if (action === "edit") {
@@ -81,175 +84,6 @@ export default function Tables({ data }: { data: TableDataMap }) {
     }))
   }
 
-  if (tableNames.length === 0)
-    return (
-      <div className="flex items-center justify-center h-64 rounded-lg bg-card text-card-foreground">
-        <p className="text-muted-foreground flex items-center gap-2">
-          <Database className="h-5 w-5" />
-          No data found
-        </p>
-      </div>
-    )
-
-  return (
-    <div className="w-full p-4 space-y-6">
-      <div className="flex items-center gap-2 mb-2">
-        <Table className="h-5 w-5 text-primary" />
-        <h2 className="text-xl font-semibold">Database Tables</h2>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-border">
-        {tableNames.map((name) => (
-          <button
-            key={name}
-            onClick={() => setActiveTab(name)}
-            className={cn(
-              "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all relative",
-              "hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              activeTab === name
-                ? "bg-background text-primary border-x border-t border-border"
-                : "text-muted-foreground",
-            )}
-          >
-            {name}
-            {activeTab === name && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
-          </button>
-        ))}
-      </div>
-
-      {/* Active Table */}
-      <div className="w-full bg-card rounded-lg shadow-sm">
-        <GenericTable title={activeTab} data={data[activeTab]} onRowClick={handleRowClick} />
-      </div>
-
-      {/* Edit Form */}
-      {editingRow && (
-        <div className="mt-6 p-4 bg-black rounded-lg shadow-sm border border-border">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Edit Row</h3>
-            <button
-              onClick={() => {
-                setEditingRow(null)
-                setFormValues({})
-              }}
-              className="p-1 rounded-full hover:bg-muted/20"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <form onSubmit={handleUpdateRow} className="space-y-4">
-            {Object.keys(editingRow).map((field) => {
-              // Skip ID fields as they shouldn't be editable
-              if (field.toLowerCase().includes("id")) return null
-
-              const value = formValues[field] || ""
-              const isNumber = typeof editingRow[field] === "number"
-              const isDate = field.toLowerCase().includes("date")
-
-              return (
-                <div key={field} className="flex flex-col gap-2">
-                  <label className="text-sm font-medium capitalize">{field.replace(/_/g, " ")}</label>
-                  {isDate ? (
-                    <input
-                      type="date"
-                      value={value}
-                      onChange={(e) => handleInputChange(field, e.target.value)}
-                      className="border rounded-md px-3 py-2 text-sm bg-black"
-                    />
-                  ) : isNumber ? (
-                    <input
-                      type="number"
-                      value={value}
-                      onChange={(e) => handleInputChange(field, Number(e.target.value))}
-                      className="border rounded-md px-3 py-2 text-sm bg-black"
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      value={value}
-                      onChange={(e) => handleInputChange(field, e.target.value)}
-                      className="border rounded-md px-3 py-2 text-sm bg-black"
-                    />
-                  )}
-                </div>
-              )
-            })}
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-              >
-                Save Changes
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingRow(null)
-                  setFormValues({})
-                }}
-                className="px-4 py-2 text-sm font-medium bg-gray-600 text-white rounded hover:bg-gray-700 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <div>
-        <InsertMatch
-          onInsert={(newMatch) => {
-            data["matches"] = [...data["matches"], newMatch]
-            setActiveTab("matches") // Ensure matches is shown
-          }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function GenericTable({
-  title,
-  data,
-  onRowClick,
-}: {
-  title: string
-  data: Record<string, any>[]
-  onRowClick?: (row: Record<string, any>, action?: string) => void
-}) {
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "ascending" | "descending" } | null>(null)
-
-  if (!data || data.length === 0)
-    return <div className="flex items-center justify-center h-40 text-muted-foreground">No {title} found</div>
-
-  const headers = Object.keys(data[0]).filter((header) => !header.toLowerCase().includes("id"))
-
-  // Function to format cell content based on value type
-  const formatCell = (value: never) => {
-    if (value === null || value === undefined) return "-"
-    if (typeof value === "boolean") return value ? "Yes" : "No"
-    return String(value)
-  }
-
-  const handleRowDelete = async (row: Record<string, any>) => {
-    console.log(row)
-    const id = row.match_id
-    console.log(id)
-    const res = await fetch(`http://localhost:4000/delete-match/${id}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-    if (!res.ok) {
-      throw new Error("Failed to delete row")
-    }
-  }
-
-  // Sort function
   const requestSort = (key: string) => {
     let direction: "ascending" | "descending" = "ascending"
 
@@ -262,7 +96,7 @@ function GenericTable({
 
   // Apply sorting to data
   const sortedData = useMemo(() => {
-    const sortableData = [...data]
+    const sortableData = data[activeTab] ? [...data[activeTab]] : []
     if (sortConfig !== null) {
       sortableData.sort((a, b) => {
         // Handle different data types
@@ -294,7 +128,218 @@ function GenericTable({
       })
     }
     return sortableData
-  }, [data, sortConfig])
+  }, [data, activeTab, sortConfig])
+
+  if (tableNames.length === 0)
+    return (
+      <div className="flex items-center justify-center h-64 rounded-lg bg-card text-card-foreground">
+        <p className="text-muted-foreground flex items-center gap-2">
+          <Database className="h-5 w-5" />
+          No data found
+        </p>
+      </div>
+    )
+
+  return (
+    <div className="w-full p-4 space-y-6">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Table className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Database Explorer</h2>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setViewMode("tables")}
+            className={cn(
+              "px-4 py-2 text-sm font-medium rounded-lg transition-all",
+              viewMode === "tables"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/80",
+            )}
+          >
+            <Table className="h-4 w-4 inline-block mr-2" />
+            Tables
+          </button>
+          <button
+            onClick={() => setViewMode("reports")}
+            className={cn(
+              "px-4 py-2 text-sm font-medium rounded-lg transition-all",
+              viewMode === "reports"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/80",
+            )}
+          >
+            <BarChart className="h-4 w-4 inline-block mr-2" />
+            Reports
+          </button>
+        </div>
+      </div>
+
+      {viewMode === "tables" ? (
+        <>
+          {/* Tabs */}
+          <div className="flex flex-wrap gap-2 border-b border-border">
+            {tableNames.map((name) => (
+              <button
+                key={name}
+                onClick={() => setActiveTab(name)}
+                className={cn(
+                  "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all relative",
+                  "hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  activeTab === name
+                    ? "bg-background text-primary border-x border-t border-border"
+                    : "text-muted-foreground",
+                )}
+              >
+                {name}
+                {activeTab === name && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+              </button>
+            ))}
+          </div>
+
+          {/* Active Table */}
+          <div className="w-full bg-card rounded-lg shadow-sm">
+            <GenericTable
+              title={activeTab}
+              data={sortedData}
+              onRowClick={handleRowClick}
+              requestSort={requestSort}
+              sortConfig={sortConfig}
+            />
+          </div>
+
+          {/* Edit Form */}
+          {editingRow && (
+            <div className="mt-6 p-4 bg-black rounded-lg shadow-sm border border-border">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Edit Row</h3>
+                <button
+                  onClick={() => {
+                    setEditingRow(null)
+                    setFormValues({})
+                  }}
+                  className="p-1 rounded-full hover:bg-muted/20"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateRow} className="space-y-4">
+                {Object.keys(editingRow).map((field) => {
+                  // Skip ID fields as they shouldn't be editable
+                  if (field.toLowerCase().includes("id")) return null
+
+                  const value = formValues[field] || ""
+                  const isNumber = typeof editingRow[field] === "number"
+                  const isDate = field.toLowerCase().includes("date")
+
+                  return (
+                    <div key={field} className="flex flex-col gap-2">
+                      <label className="text-sm font-medium capitalize">{field.replace(/_/g, " ")}</label>
+                      {isDate ? (
+                        <input
+                          type="date"
+                          value={value}
+                          onChange={(e) => handleInputChange(field, e.target.value)}
+                          className="border rounded-md px-3 py-2 text-sm bg-black"
+                        />
+                      ) : isNumber ? (
+                        <input
+                          type="number"
+                          value={value}
+                          onChange={(e) => handleInputChange(field, Number(e.target.value))}
+                          className="border rounded-md px-3 py-2 text-sm bg-black"
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={(e) => handleInputChange(field, e.target.value)}
+                          className="border rounded-md px-3 py-2 text-sm bg-black"
+                        />
+                      )}
+                    </div>
+                  )
+                })}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingRow(null)
+                      setFormValues({})
+                    }}
+                    className="px-4 py-2 text-sm font-medium bg-gray-600 text-white rounded hover:bg-gray-700 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div>
+            <InsertMatch
+              onInsert={(newMatch) => {
+                data["matches"] = [...data["matches"], newMatch]
+                setActiveTab("matches") // Ensure matches is shown
+              }}
+            />
+          </div>
+        </>
+      ) : (
+        <ReportInterface data={data} />
+      )}
+    </div>
+  )
+}
+
+function GenericTable({
+  title,
+  data,
+  onRowClick,
+  requestSort,
+  sortConfig,
+}: {
+  title: string
+  data: Record<string, any>[]
+  onRowClick?: (row: Record<string, any>, action?: string) => void
+  requestSort: (key: string) => void
+  sortConfig: { key: string; direction: "ascending" | "descending" } | null
+}) {
+  if (!data || data.length === 0)
+    return <div className="flex items-center justify-center h-40 text-muted-foreground">No {title} found</div>
+
+  const headers = Object.keys(data[0]).filter((header) => !header.toLowerCase().includes("id"))
+
+  // Function to format cell content based on value type
+  const formatCell = (value: never) => {
+    if (value === null || value === undefined) return "-"
+    if (typeof value === "boolean") return value ? "Yes" : "No"
+    return String(value)
+  }
+
+  const handleRowDelete = async (row: Record<string, any>) => {
+    console.log(row)
+    const id = row.match_id
+    console.log(id)
+    const res = await fetch(`http://localhost:4000/delete-match/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+    if (!res.ok) {
+      throw new Error("Failed to delete row")
+    }
+  }
 
   return (
     <div className="overflow-x-auto rounded-lg bg-black">
@@ -327,7 +372,7 @@ function GenericTable({
           </tr>
         </thead>
         <tbody>
-          {sortedData.map((row, rowIndex) => (
+          {data.map((row, rowIndex) => (
             <tr
               key={rowIndex}
               className={cn(
