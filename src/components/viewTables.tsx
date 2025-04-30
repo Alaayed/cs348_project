@@ -1,40 +1,57 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useMemo } from "react"
-import { ChevronDown, ChevronUp, Database, Table, X, BarChart } from "lucide-react"
-import { cn } from "@/lib/utils"
-import ReportInterface from "./report-interface"
+import { useState, useMemo } from "react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Database,
+  Table,
+  X,
+  BarChart,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import ReportInterface from "./report-interface";
+import { start } from "node:repl";
 
-type TableDataMap = Record<string, Record<string, any>[]>
+type TableDataMap = Record<string, Record<string, any>[]>;
 
 export default function Tables({ data }: { data: TableDataMap }) {
-  const tableNames = Object.keys(data)
-  const [activeTab, setActiveTab] = useState(tableNames[0])
-  const [selectedRow, setSelectedRow] = useState<Record<string, any> | null>(null)
-  const [editingRow, setEditingRow] = useState<Record<string, any> | null>(null)
-  const [formValues, setFormValues] = useState<Record<string, any>>({})
-  const [viewMode, setViewMode] = useState<"tables" | "reports">("tables")
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "ascending" | "descending" } | null>(null)
+  console.log("REFRESH  ");
+  const tableNames = Object.keys(data);
+  const [activeTab, setActiveTab] = useState(tableNames[0]);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [editingRow, setEditingRow] = useState<Record<string, any> | null>(
+    null,
+  );
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
+  const [viewMode, setViewMode] = useState<"tables" | "reports">("tables");
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: "ascending" | "descending";
+  } | null>(null);
 
   const handleRowClick = async (row: Record<string, any>, action?: string) => {
     if (action === "edit") {
-      setEditingRow(row)
+      setEditingRow(row);
       // Initialize form values with current row data
-      setFormValues({ ...row })
+      setFormValues({ ...row });
     }
-  }
+  };
 
   const handleUpdateRow = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!editingRow) return
+    if (!editingRow) return;
 
     // Find the ID field
-    const idKey = Object.keys(editingRow).find((key) => key.toLowerCase().includes("id"))
-    if (!idKey) return
-    console.log(formValues)
+    const idKey = Object.keys(editingRow).find((key) =>
+      key.toLowerCase().includes("id"),
+    );
+    if (!idKey) return;
+    console.log(formValues);
 
     const updatedMatch = {
       match_id: formValues.match_id,
@@ -43,7 +60,7 @@ export default function Tables({ data }: { data: TableDataMap }) {
       away_team_name: formValues.away_team_name,
       home_score: Number(formValues.home_score),
       away_score: Number(formValues.away_score),
-    }
+    };
     try {
       const response = await fetch(`http://localhost:4000/update-match`, {
         method: "PUT",
@@ -51,62 +68,68 @@ export default function Tables({ data }: { data: TableDataMap }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(updatedMatch),
-      })
+      });
 
       if (!response.ok) {
-        console.error("Failed to update row")
-        return
+        console.error("Failed to update row");
+        return;
       }
 
       // Update the data in the UI
-      const updatedData = [...data[activeTab]]
-      const index = updatedData.findIndex((row) => row[idKey] === editingRow[idKey])
+      const updatedData = [...data[activeTab]];
+      const index = updatedData.findIndex(
+        (row) => row[idKey] === editingRow[idKey],
+      );
 
       if (index !== -1) {
-        updatedData[index] = formValues
-        data[activeTab] = updatedData
+        updatedData[index] = formValues;
+        data[activeTab] = updatedData;
         // Force re-render
-        setActiveTab(activeTab)
+        setActiveTab(activeTab);
       }
 
       // Close the edit form
-      setEditingRow(null)
-      setFormValues({})
+      setEditingRow(null);
+      setFormValues({});
     } catch (err) {
-      console.error("Error updating row:", err)
+      console.error("Error updating row:", err);
     }
-  }
+  };
 
   const handleInputChange = (field: string, value: any) => {
     setFormValues((prev) => ({
       ...prev,
       [field]: value,
-    }))
-  }
+    }));
+  };
 
   const requestSort = (key: string) => {
-    let direction: "ascending" | "descending" = "ascending"
+    let direction: "ascending" | "descending" = "ascending";
 
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === "ascending") {
-      direction = "descending"
+    if (
+      sortConfig &&
+      sortConfig.key === key &&
+      sortConfig.direction === "ascending"
+    ) {
+      direction = "descending";
     }
 
-    setSortConfig({ key, direction })
-  }
+    setSortConfig({ key, direction });
+  };
 
   // Apply sorting to data
   const sortedData = useMemo(() => {
-    const sortableData = data[activeTab] ? [...data[activeTab]] : []
+    const sortableData = data[activeTab] ? [...data[activeTab]] : [];
     if (sortConfig !== null) {
       sortableData.sort((a, b) => {
         // Handle different data types
-        let aValue = a[sortConfig.key]
-        let bValue = b[sortConfig.key]
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
 
         // Handle dates
         if (sortConfig.key.toLowerCase().includes("date")) {
-          aValue = new Date(aValue).getTime()
-          bValue = new Date(bValue).getTime()
+          aValue = new Date(aValue).getTime();
+          bValue = new Date(bValue).getTime();
         }
         // Handle numbers
         else if (typeof aValue === "number" && typeof bValue === "number") {
@@ -114,22 +137,35 @@ export default function Tables({ data }: { data: TableDataMap }) {
         }
         // Handle strings (case-insensitive)
         else {
-          aValue = String(aValue).toLowerCase()
-          bValue = String(bValue).toLowerCase()
+          aValue = String(aValue).toLowerCase();
+          bValue = String(bValue).toLowerCase();
         }
 
         if (aValue < bValue) {
-          return sortConfig.direction === "ascending" ? -1 : 1
+          return sortConfig.direction === "ascending" ? -1 : 1;
         }
         if (aValue > bValue) {
-          return sortConfig.direction === "ascending" ? 1 : -1
+          return sortConfig.direction === "ascending" ? 1 : -1;
         }
-        return 0
-      })
+        return 0;
+      });
     }
-    return sortableData
-  }, [data, activeTab, sortConfig])
+    return sortableData;
+  }, [data, activeTab, sortConfig]);
+  const handleFilter = async () => {
+    console.log("Filtering by: ", { startDate, endDate });
 
+    const response = await fetch(`http://localhost:4000/get-date-filtered`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ startDate, endDate }),
+    });
+    const filteredData = await response.json();
+    console.log("FilteredData: ", filteredData.matches);
+    data.matches = filteredData.matches;
+  };
   if (tableNames.length === 0)
     return (
       <div className="flex items-center justify-center h-64 rounded-lg bg-card text-card-foreground">
@@ -138,7 +174,7 @@ export default function Tables({ data }: { data: TableDataMap }) {
           No data found
         </p>
       </div>
-    )
+    );
 
   return (
     <div className="w-full p-4 space-y-6">
@@ -175,7 +211,30 @@ export default function Tables({ data }: { data: TableDataMap }) {
           </button>
         </div>
       </div>
-
+      <div>
+        <label className=" block text-sm font-medium"> Start Data </label>
+        <input
+          className="text-black"
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className=" block text-sm font-medium"> End Data </label>
+        <input
+          className="text-black"
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+        />
+      </div>
+      <button
+        onClick={handleFilter}
+        className="bg-blue-500 text-white px-4 py-2 rounded"
+      >
+        Filter
+      </button>
       {viewMode === "tables" ? (
         <>
           {/* Tabs */}
@@ -193,7 +252,9 @@ export default function Tables({ data }: { data: TableDataMap }) {
                 )}
               >
                 {name}
-                {activeTab === name && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+                {activeTab === name && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                )}
               </button>
             ))}
           </div>
@@ -216,8 +277,8 @@ export default function Tables({ data }: { data: TableDataMap }) {
                 <h3 className="text-lg font-semibold">Edit Row</h3>
                 <button
                   onClick={() => {
-                    setEditingRow(null)
-                    setFormValues({})
+                    setEditingRow(null);
+                    setFormValues({});
                   }}
                   className="p-1 rounded-full hover:bg-muted/20"
                 >
@@ -228,39 +289,47 @@ export default function Tables({ data }: { data: TableDataMap }) {
               <form onSubmit={handleUpdateRow} className="space-y-4">
                 {Object.keys(editingRow).map((field) => {
                   // Skip ID fields as they shouldn't be editable
-                  if (field.toLowerCase().includes("id")) return null
+                  if (field.toLowerCase().includes("id")) return null;
 
-                  const value = formValues[field] || ""
-                  const isNumber = typeof editingRow[field] === "number"
-                  const isDate = field.toLowerCase().includes("date")
+                  const value = formValues[field] || "";
+                  const isNumber = typeof editingRow[field] === "number";
+                  const isDate = field.toLowerCase().includes("date");
 
                   return (
                     <div key={field} className="flex flex-col gap-2">
-                      <label className="text-sm font-medium capitalize">{field.replace(/_/g, " ")}</label>
+                      <label className="text-sm font-medium capitalize">
+                        {field.replace(/_/g, " ")}
+                      </label>
                       {isDate ? (
                         <input
                           type="date"
                           value={value}
-                          onChange={(e) => handleInputChange(field, e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange(field, e.target.value)
+                          }
                           className="border rounded-md px-3 py-2 text-sm bg-black"
                         />
                       ) : isNumber ? (
                         <input
                           type="number"
                           value={value}
-                          onChange={(e) => handleInputChange(field, Number(e.target.value))}
+                          onChange={(e) =>
+                            handleInputChange(field, Number(e.target.value))
+                          }
                           className="border rounded-md px-3 py-2 text-sm bg-black"
                         />
                       ) : (
                         <input
                           type="text"
                           value={value}
-                          onChange={(e) => handleInputChange(field, e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange(field, e.target.value)
+                          }
                           className="border rounded-md px-3 py-2 text-sm bg-black"
                         />
                       )}
                     </div>
-                  )
+                  );
                 })}
 
                 <div className="flex gap-2 pt-2">
@@ -273,8 +342,8 @@ export default function Tables({ data }: { data: TableDataMap }) {
                   <button
                     type="button"
                     onClick={() => {
-                      setEditingRow(null)
-                      setFormValues({})
+                      setEditingRow(null);
+                      setFormValues({});
                     }}
                     className="px-4 py-2 text-sm font-medium bg-gray-600 text-white rounded hover:bg-gray-700 transition"
                   >
@@ -288,8 +357,8 @@ export default function Tables({ data }: { data: TableDataMap }) {
           <div>
             <InsertMatch
               onInsert={(newMatch) => {
-                data["matches"] = [...data["matches"], newMatch]
-                setActiveTab("matches") // Ensure matches is shown
+                data["matches"] = [...data["matches"], newMatch];
+                setActiveTab("matches"); // Ensure matches is shown
               }}
             />
           </div>
@@ -298,7 +367,7 @@ export default function Tables({ data }: { data: TableDataMap }) {
         <ReportInterface data={data} />
       )}
     </div>
-  )
+  );
 }
 
 function GenericTable({
@@ -308,38 +377,44 @@ function GenericTable({
   requestSort,
   sortConfig,
 }: {
-  title: string
-  data: Record<string, any>[]
-  onRowClick?: (row: Record<string, any>, action?: string) => void
-  requestSort: (key: string) => void
-  sortConfig: { key: string; direction: "ascending" | "descending" } | null
+  title: string;
+  data: Record<string, any>[];
+  onRowClick?: (row: Record<string, any>, action?: string) => void;
+  requestSort: (key: string) => void;
+  sortConfig: { key: string; direction: "ascending" | "descending" } | null;
 }) {
   if (!data || data.length === 0)
-    return <div className="flex items-center justify-center h-40 text-muted-foreground">No {title} found</div>
+    return (
+      <div className="flex items-center justify-center h-40 text-muted-foreground">
+        No {title} found
+      </div>
+    );
 
-  const headers = Object.keys(data[0]).filter((header) => !header.toLowerCase().includes("id"))
+  const headers = Object.keys(data[0]).filter(
+    (header) => !header.toLowerCase().includes("id"),
+  );
 
   // Function to format cell content based on value type
   const formatCell = (value: never) => {
-    if (value === null || value === undefined) return "-"
-    if (typeof value === "boolean") return value ? "Yes" : "No"
-    return String(value)
-  }
+    if (value === null || value === undefined) return "-";
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    return String(value);
+  };
 
   const handleRowDelete = async (row: Record<string, any>) => {
-    console.log(row)
-    const id = row.match_id
-    console.log(id)
+    console.log(row);
+    const id = row.match_id;
+    console.log(id);
     const res = await fetch(`http://localhost:4000/delete-match/${id}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
       },
-    })
+    });
     if (!res.ok) {
-      throw new Error("Failed to delete row")
+      throw new Error("Failed to delete row");
     }
-  }
+  };
 
   return (
     <div className="overflow-x-auto rounded-lg bg-black">
@@ -378,31 +453,34 @@ function GenericTable({
               className={cn(
                 "transition-colors",
                 "hover:bg-muted/50",
-                rowIndex % 2 === 0 ? "bg-black text-white" : "bg-neutral-800 text-white",
+                rowIndex % 2 === 0
+                  ? "bg-black text-white"
+                  : "bg-neutral-800 text-white",
               )}
             >
               {headers.map((header) => {
-                const value = formatCell(row[header])
+                const value = formatCell(row[header]);
                 return (
                   <td key={header} className="px-6 py-4 border-b border-border">
                     <span
                       className={cn(
-                        header.toLowerCase().includes("id") && "font-mono text-xs",
+                        header.toLowerCase().includes("id") &&
+                          "font-mono text-xs",
                         header.toLowerCase().includes("price") && "font-medium",
                       )}
                     >
                       {value}
                     </span>
                   </td>
-                )
+                );
               })}
               <td className="px-6 py-4 border-b border-border">
                 <div className="flex gap-2">
                   <button
                     className="px-3 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600"
                     onClick={(e) => {
-                      e.stopPropagation()
-                      onRowClick?.(row, "edit")
+                      e.stopPropagation();
+                      onRowClick?.(row, "edit");
                     }}
                   >
                     Edit
@@ -420,18 +498,22 @@ function GenericTable({
         </tbody>
       </table>
     </div>
-  )
+  );
 }
 
-function InsertMatch({ onInsert }: { onInsert: (match: Record<string, any>) => void }) {
-  const [matchDate, setMatchDate] = useState("")
-  const [homeTeam, setHomeTeam] = useState("")
-  const [awayTeam, setAwayTeam] = useState("")
-  const [homeScore, setHomeScore] = useState("")
-  const [awayScore, setAwayScore] = useState("")
+function InsertMatch({
+  onInsert,
+}: {
+  onInsert: (match: Record<string, any>) => void;
+}) {
+  const [matchDate, setMatchDate] = useState("");
+  const [homeTeam, setHomeTeam] = useState("");
+  const [awayTeam, setAwayTeam] = useState("");
+  const [homeScore, setHomeScore] = useState("");
+  const [awayScore, setAwayScore] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     const newMatch = {
       match_date: matchDate,
@@ -439,9 +521,9 @@ function InsertMatch({ onInsert }: { onInsert: (match: Record<string, any>) => v
       away_team_name: awayTeam,
       home_score: Number(homeScore),
       away_score: Number(awayScore),
-    }
+    };
 
-    onInsert(newMatch)
+    onInsert(newMatch);
     try {
       const response = await fetch("http://localhost:4000/insert-match", {
         method: "POST",
@@ -449,29 +531,32 @@ function InsertMatch({ onInsert }: { onInsert: (match: Record<string, any>) => v
           "Content-Type": "application/json",
         },
         body: JSON.stringify(newMatch),
-      })
+      });
 
       if (!response.ok) {
-        const error = await response.text()
-        console.error("Failed to insert match:", error)
+        const error = await response.text();
+        console.error("Failed to insert match:", error);
       } else {
-        const result = await response.json()
-        console.log("Match inserted:", result)
+        const result = await response.json();
+        console.log("Match inserted:", result);
       }
     } catch (err) {
-      console.error("Error calling insert-match API:", err)
+      console.error("Error calling insert-match API:", err);
     }
 
     // Reset form
-    setMatchDate("")
-    setHomeTeam("")
-    setAwayTeam("")
-    setHomeScore("")
-    setAwayScore("")
-  }
+    setMatchDate("");
+    setHomeTeam("");
+    setAwayTeam("");
+    setHomeScore("");
+    setAwayScore("");
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 mt-6 p-4 bg-black rounded-lg shadow-sm">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 mt-6 p-4 bg-black rounded-lg shadow-sm"
+    >
       <h3 className="text-lg font-semibold mb-2">Insert New Match</h3>
 
       <div className="flex flex-col gap-2">
@@ -540,6 +625,5 @@ function InsertMatch({ onInsert }: { onInsert: (match: Record<string, any>) => v
         Add Match
       </button>
     </form>
-  )
+  );
 }
-

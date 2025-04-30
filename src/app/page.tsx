@@ -1,7 +1,9 @@
 import Tables from "@/components/viewTables";
 
 async function fetchTables() {
-  const res = await fetch("http://localhost:4000/get-stats", { cache: "no-store" });
+  const res = await fetch("http://localhost:4000/get-stats", {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch table data");
   return res.json(); // Expecting { teams: [...], matches: [...] }
 }

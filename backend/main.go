@@ -2,14 +2,15 @@ package main
 
 import (
 	"backend/API_CALL"
-	"backend/DBCONFIG"
+	dbconn "backend/DBCONFIG"
 	"database/sql"
 	"fmt"
+	"log"
+	"net/http"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
-	"log"
-	"net/http"
 )
 
 func setupRouter() (*mux.Router, *cors.Cors) {
@@ -23,6 +24,7 @@ func setupRouter() (*mux.Router, *cors.Cors) {
 	router.HandleFunc("/insert-match", API_CALL.InsertMatch).Methods("POST")
 	router.HandleFunc("/delete-match/{id}", API_CALL.DeleteMatch).Methods("DELETE")
 	router.HandleFunc("/update-match", API_CALL.UpdateMatch).Methods("PUT")
+	router.HandleFunc("/get-date-filtered", API_CALL.GetFiltered).Methods("POST")
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},

@@ -4,9 +4,10 @@ import (
 	"backend/query"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func GetTables(w http.ResponseWriter, r *http.Request) {
@@ -98,5 +99,32 @@ func UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	return
+}
+func GetFiltered(w http.ResponseWriter, r *http.Request) {
+	//log.Println("HEY IN HERE")
+	var dates query.Range
+	// Get Dates
+	err := json.NewDecoder(r.Body).Decode(&dates)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	data := dates.GetData()
+	if data == nil {
+		log.Println("Somethings fucked in GetFiltered :(")
+		http.Error(w, "mb", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]interface{}{
+		"matches": data,
+	}
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return
 }

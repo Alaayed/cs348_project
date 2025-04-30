@@ -1,11 +1,15 @@
 package query
 
 import (
-	"backend/DBCONFIG"
+	dbconn "backend/DBCONFIG"
 	"database/sql"
 	"log"
 )
 
+type Range struct {
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+}
 type Team struct {
 	TeamId   int    `json:"team_id"`
 	TeamName string `json:"team_name"`
@@ -184,7 +188,7 @@ func DeleteMatchID(id string) {
 
 func (n Match) UpdateMatch() (sql.Result, error) {
 	db := dbconn.DB
-	return db.Exec(`UPDATE Matches 
+	return db.Exec(`UPDATE Matches
 					SET match_date = ?, home_team_id = ?, away_team_id = ?, home_score = ?, away_score = ?
 					WHERE match_id = ?`,
 		n.Date,
@@ -194,4 +198,50 @@ func (n Match) UpdateMatch() (sql.Result, error) {
 		n.AwayScore,
 		n.MatchId,
 	)
+}
+func (r Range) GetData() []MatchWithName {
+	db := dbconn.DB
+	rows, err := db.Query(`
+		SELECT m.match_id as match_id,
+       m.match_date as match_date,
+       t.team_name as home_team_name,
+       t2.team_name as away_team_name,
+       m.home_score as home_score,
+       m.away_score as away_score
+FROM Matches m
+JOIN Teams t ON m.home_team_id = t.team_id
+JOIN Teams t2 ON m.away_team_id = t2.team_id
+WHERE m.match_date BETWEEN ? AND ?`,
+		r.StartDate,
+		r.EndDate)
+	// Check errors
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	// Close Row
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(rows)
+	// Get matches
+	var matches []MatchWithName
+	for rows.Next() {
+		var match MatchWithName
+		err = rows.Scan(
+			&match.MatchId,
+			&match.Date,
+			&match.HomeTeamName,
+			&match.AwayTeamName,
+			&match.HomeScore,
+			&match.AwayScore,
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+		matches = append(matches, match)
+	}
+	return matches
 }
